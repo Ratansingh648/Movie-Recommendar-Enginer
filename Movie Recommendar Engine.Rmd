@@ -1,0 +1,68 @@
+---
+title: "Movie Recommendar Engine"
+author: "Ratan Singh"
+date: "27 February 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This document demonstrates a method to create a movie recommendar system for the user based on the dataset obtained from the MNIST repository. This document explains methods both of make recommendar system which are **1. Content based filtering** and **2. Collaborative filtering**. However we will see that the only recommendar system that we can design is a content based filtering. We will discuss later in the course that how we concluded this from the dataset. For now lets understand a little about the dataset. The underlying datasets consists of 1682 observation with 23 attributes. These attrributes define the content of the movie and thus makes suitable for **Content Based filtering**. 
+In case of Collaborative filtering there are two major approaches namely **1. User - User Recommendar** and **2. Item - Item Recommendar**.
+
+### User - User Recommendar 
+In this type of recommendar system, we have a matrix which contains **Users** and **Products** as the axes of the matrix. Such matrix is known as *Collaboration matrix*. From this kind of Recommendar system, we try to find the similarity between the given user and other user. Thus if given user is similar to some other user, then the products utilized most by the other user is recommended to the given user (user of our interest).
+
+### Item - Item Recommendar 
+In this type of recommendar system, we use  *Collaboration matrix* just like above. However here our approach is based on  *Product* rather than the *User*. From this kind of Recommendar system, we try to find the similarity between the products used by given user and other products. Thus if you like this product then it will recommend you product similar to this. For finding the similarity between the products it uses rating from the users. 
+
+
+## Loading the dataset
+
+Now let's load the dataset and remove the attributes which are not needed for our modeling. 
+
+```{r dataset}
+movie_data <- read.csv("C:/Users/Ratan Singh/Documents/R Markdown Files/Movie Recommendar/MovieData.csv",stringsAsFactors = FALSE,header = TRUE)
+print(head(movie_data))
+```
+
+Since our dataset contains the attributes which defines the content of the movie , this makes it more suitable for the content based filtering not collaborative filtering. Here we observe that **movie.id** is redundant. Also **unknown** contains '0' for all the observation and hence no variance therefore we can remove it. Similarly **release.date** and **IMDb.URL** is also not useful so we will remove them.
+
+```{r data preprocessing}
+movie_data_Reduced <- movie_data[,-c(1,3,4,5)]
+print(head(movie_data_Reduced))
+```
+
+Now we are ready to proceed with making of recommendar systems. To match the content of two movies, we are using cosine similarity. In this process, we treat attributes as a vector and try to find the cosine of the angle between two vectors in n-dimensional space. For perfectly similar two movies, it will be 1 while 0 for the other case. Following function evaluates the similarity between the two movies. 
+
+```{r cosineSimilarity }
+cosineSimilarity <- function(vect){
+        vect_norm <- sqrt(sum(vect^2))
+        val <- sum(vect*user_vect)/(vect_norm*user_vect_norm+1e-10)
+        return(val) 
+        }
+```
+Now let's say we want to recommend top 5 movies to the person who liked movie **Toy Story** which is our first movie in dataset. Let's try to compute a similarity for this movie and store it in a column **Similarity Rating** 
+
+```{r similarity}
+
+user_index <- 1
+movie_name <- movie_data_Reduced[user_index,1]
+user_vect <- (movie_data_Reduced[user_index,-1])
+user_vect_norm <- sqrt(sum(user_vect^2))
+
+movie_data_Reduced[,"Similarity Rating"] <- apply(movie_data_Reduced[,-1],MARGIN = 1,cosineSimilarity)
+print(head(movie_data_Reduced))
+```
+Now we have computed similarity rating for each of the movie available and now let's arrange all the movies in ascending order of similarity and remove the original movie from the top 10 recommened movies.
+
+```{r sorting the movies}
+movie_data_Reduced_ordered <- movie_data_Reduced[order(movie_data_Reduced[,20],decreasing = TRUE),]
+Recommended_movie_name <- movie_data_Reduced_ordered[movie_data_Reduced_ordered[,1] != movie_name,c(1,20)]
+colnames(Recommended_movie_name) <- c("Movie Name","Similarity Score")
+print(Recommended_movie_name[1:10,])
+```
